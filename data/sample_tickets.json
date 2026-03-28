@@ -1,0 +1,26 @@
+[
+  {
+    "title": "Usuario sem acesso apos troca de senha",
+    "description": "O usuario continua sem acesso e recebe erro de permissao ao autenticar no portal.",
+    "requester": "time.suporte",
+    "source_system": "portal-interno"
+  },
+  {
+    "title": "ERP indisponivel para o financeiro",
+    "description": "Sistema indisponivel desde 09h, com timeout para todos os usuarios da area financeira.",
+    "requester": "financeiro",
+    "source_system": "erp"
+  },
+  {
+    "title": "Falha na integracao entre CRM e ERP",
+    "description": "A integracao via API nao sincroniza pedidos desde ontem.",
+    "requester": "operacoes",
+    "source_system": "crm"
+  },
+  {
+    "title": "Robô de faturamento nao processou a fila",
+    "description": "A automacao do faturamento nao executou o job agendado durante a madrugada.",
+    "requester": "backoffice",
+    "source_system": "orquestrador"
+  }
+]
