@@ -11,3 +11,4 @@ Given a ticket title and description, return only valid JSON using this schema:
 }
 
 Keep the reasoning concise and practical for IT support operations.
+Do not include markdown, code fences, comments, or extra keys.

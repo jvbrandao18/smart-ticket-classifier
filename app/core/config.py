@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_base_url: str = "https://api.openai.com/v1"
     llm_model: str = "gpt-4.1-mini"
+    llm_timeout_seconds: float = 15.0
+    llm_max_retries: int = 2
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -32,4 +34,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

@@ -1,26 +1,182 @@
 [
   {
-    "title": "Usuario sem acesso apos troca de senha",
-    "description": "O usuario continua sem acesso e recebe erro de permissao ao autenticar no portal.",
+    "title": "Usuario sem acesso apos reset de senha",
+    "description": "Usuario recebeu senha temporaria, mas segue sem acesso ao portal e erro de permissao no login.",
     "requester": "time.suporte",
     "source_system": "portal-interno"
   },
   {
-    "title": "ERP indisponivel para o financeiro",
-    "description": "Sistema indisponivel desde 09h, com timeout para todos os usuarios da area financeira.",
+    "title": "Permissao negada no SAP",
+    "description": "Perfil do financeiro perdeu permissao de consulta e o acesso foi negado logo apos a virada do dia.",
+    "requester": "financeiro",
+    "source_system": "sap"
+  },
+  {
+    "title": "Nao consigo entrar no dashboard",
+    "description": "Senha foi trocada ontem e agora o acesso ao dashboard analitico esta bloqueado para o usuario.",
+    "requester": "analytics",
+    "source_system": "bi"
+  },
+  {
+    "title": "login quebrado no portal de vendas",
+    "description": "time comercial relata: login ok em alguns navegadores, mas sem permissao em outros.",
+    "requester": "comercial",
+    "source_system": "portal-vendas"
+  },
+  {
+    "title": "Acesso admin sumiu",
+    "description": "Depois de um ajuste de grupo, o admin ficou sem acesso e a permissao critica desapareceu.",
+    "requester": "infra",
+    "source_system": "iam"
+  },
+  {
+    "title": "ERP indisponivel para todos",
+    "description": "Sistema indisponivel desde 09h. Todos os usuarios receberam timeout ao abrir o modulo financeiro.",
     "requester": "financeiro",
     "source_system": "erp"
   },
   {
-    "title": "Falha na integracao entre CRM e ERP",
-    "description": "A integracao via API nao sincroniza pedidos desde ontem.",
+    "title": "Erro 504 no portal do cliente",
+    "description": "[2026-03-28 09:11:42] ERROR gateway timeout ao consultar pedidos.",
+    "requester": "cx",
+    "source_system": "portal-cliente"
+  },
+  {
+    "title": "Falha geral no envio de emails",
+    "description": "Fila de notificacoes falhou e o servico ficou indisponivel por 14 minutos.",
+    "requester": "marketing",
+    "source_system": "mailer"
+  },
+  {
+    "title": "Timeout intermitente no checkout",
+    "description": "Clientes relatam timeout no checkout, mas sem padrao claro de navegador.",
+    "requester": "ecommerce",
+    "source_system": "checkout"
+  },
+  {
+    "title": "App de campo parado",
+    "description": "Aplicativo fora do ar, equipe parada e erro generico em todas as rotas principais.",
+    "requester": "operacoes-campo",
+    "source_system": "mobile-app"
+  },
+  {
+    "title": "Integracao CRM x ERP nao sincroniza",
+    "description": "A integracao via API nao envia pedidos desde ontem a noite.",
     "requester": "operacoes",
     "source_system": "crm"
   },
   {
-    "title": "Robô de faturamento nao processou a fila",
+    "title": "Webhook de parceiro falhando",
+    "description": "[WARN] webhook partner-x retornou 401 e a sincronizacao foi interrompida.",
+    "requester": "parcerias",
+    "source_system": "middleware"
+  },
+  {
+    "title": "Pedidos sem retorno da API fiscal",
+    "description": "Fluxo fiscal parou porque a API externa nao respondeu e a integracao acumulou fila.",
+    "requester": "fiscal",
+    "source_system": "hub-fiscal"
+  },
+  {
+    "title": "Integracao meio estranha c/ estoque",
+    "description": "estoque nao baixa direito; parece sync quebrada entre OMS e WMS",
+    "requester": "logistica",
+    "source_system": "oms"
+  },
+  {
+    "title": "Falha no conector do HRIS",
+    "description": "Conector de RH nao conclui a sincronizacao e gera erro em chamadas da API.",
+    "requester": "rh",
+    "source_system": "hris"
+  },
+  {
+    "title": "Dashboard sem dados de ontem",
+    "description": "O dashboard executivo amanheceu vazio e a base analitica aparenta atraso.",
+    "requester": "diretoria",
+    "source_system": "bi"
+  },
+  {
+    "title": "Relatorio com numero divergente",
+    "description": "Relatorio de receita nao bate com o ERP e os dados consolidados parecem inconsistentes.",
+    "requester": "controladoria",
+    "source_system": "dw"
+  },
+  {
+    "title": "base veio zuada hoje",
+    "description": "dataset de vendas chegou com linhas duplicadas e dashboard ficou quebrado",
+    "requester": "analytics",
+    "source_system": "lakehouse"
+  },
+  {
+    "title": "Sem dados no painel de SLA",
+    "description": "Painel de SLA sem dados desde 06h. Logs do ETL mostram atraso na carga.",
+    "requester": "cx",
+    "source_system": "observabilidade"
+  },
+  {
+    "title": "Dados do financeiro atrasados",
+    "description": "[INFO] job finalizado com warnings, mas os dados do dashboard ficaram desatualizados.",
+    "requester": "financeiro",
+    "source_system": "etl"
+  },
+  {
+    "title": "Robo de faturamento nao processou",
     "description": "A automacao do faturamento nao executou o job agendado durante a madrugada.",
     "requester": "backoffice",
     "source_system": "orquestrador"
+  },
+  {
+    "title": "Bot do WhatsApp travado",
+    "description": "Bot de atendimento travou depois do deploy e nao respondeu novas mensagens.",
+    "requester": "cx",
+    "source_system": "bot-whatsapp"
+  },
+  {
+    "title": "job noturno pulou de novo",
+    "description": "job de consolidacao nao rodou; parece falha no robo ou no scheduler",
+    "requester": "dados",
+    "source_system": "scheduler"
+  },
+  {
+    "title": "Automacao de cadastro criou duplicados",
+    "description": "Automacao rodou duas vezes e gerou cadastro repetido no CRM.",
+    "requester": "operacoes",
+    "source_system": "rpa"
+  },
+  {
+    "title": "Bot de cobranca sem execucao",
+    "description": "[ERROR] worker stopped unexpectedly before finishing the cobranca queue.",
+    "requester": "financeiro",
+    "source_system": "bot-cobranca"
+  },
+  {
+    "title": "Solicitacao de novo perfil",
+    "description": "Time de compras precisa de um novo perfil de consulta para homologacao.",
+    "requester": "compras",
+    "source_system": "iam"
+  },
+  {
+    "title": "Ajuste no formulario de leads",
+    "description": "Solicitacao de melhoria no formulario para adicionar um novo campo opcional.",
+    "requester": "marketing",
+    "source_system": "crm"
+  },
+  {
+    "title": "duvida sobre fila de atendimento",
+    "description": "Usuario pediu orientacao sobre como abrir chamados pelo portal correto.",
+    "requester": "atendimento",
+    "source_system": "service-desk"
+  },
+  {
+    "title": "Pedido de acesso ou talvez bug",
+    "description": "Texto ambiguo: usuario fala que nao consegue ver tela nova, mas nao explica se eh permissao ou erro visual.",
+    "requester": "produto",
+    "source_system": "portal-produto"
+  },
+  {
+    "title": "Melhoria simples no relatorio",
+    "description": "Solicitacao para trocar a ordem das colunas do relatorio semanal.",
+    "requester": "operacoes",
+    "source_system": "bi"
   }
 ]

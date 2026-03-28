@@ -2,7 +2,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.domain.models import Ticket
-from app.schemas.ticket import TicketDecision, TicketRequest
+from app.schemas.ticket import TicketDecision, TicketProcessingMetadata, TicketRequest
 
 
 class TicketRepository:
@@ -12,6 +12,7 @@ class TicketRepository:
         *,
         payload: TicketRequest,
         decision: TicketDecision,
+        metadata: TicketProcessingMetadata,
         correlation_id: str,
     ) -> Ticket:
         ticket = Ticket(
@@ -25,6 +26,11 @@ class TicketRepository:
             suggested_queue=decision.suggested_queue,
             confidence_score=decision.confidence_score,
             summary_justification=decision.summary_justification,
+            processing_time_ms=metadata.processing_time_ms,
+            llm_attempted=metadata.llm_attempted,
+            llm_used=metadata.llm_used,
+            llm_attempt_count=metadata.llm_attempt_count,
+            llm_latency_ms=metadata.llm_latency_ms,
             correlation_id=correlation_id,
         )
         session.add(ticket)
@@ -44,6 +50,11 @@ class TicketRepository:
         value = session.scalar(statement)
         return round(float(value or 0.0), 4)
 
+    def average_processing_time(self, session: Session) -> float:
+        statement = select(func.avg(Ticket.processing_time_ms))
+        value = session.scalar(statement)
+        return round(float(value or 0.0), 2)
+
     def count_by_category(self, session: Session) -> dict[str, int]:
         statement = select(Ticket.category, func.count(Ticket.id)).group_by(Ticket.category)
         rows = session.execute(statement).all()
@@ -53,3 +64,11 @@ class TicketRepository:
         statement = select(Ticket.priority, func.count(Ticket.id)).group_by(Ticket.priority)
         rows = session.execute(statement).all()
         return {priority: int(total) for priority, total in rows}
+
+    def count_llm_used(self, session: Session) -> int:
+        statement = select(func.count(Ticket.id)).where(Ticket.llm_used.is_(True))
+        return int(session.scalar(statement) or 0)
+
+    def count_llm_attempted(self, session: Session) -> int:
+        statement = select(func.count(Ticket.id)).where(Ticket.llm_attempted.is_(True))
+        return int(session.scalar(statement) or 0)

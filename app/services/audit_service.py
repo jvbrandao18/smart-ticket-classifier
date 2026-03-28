@@ -42,6 +42,15 @@ class AuditService:
             correlation_id=ticket.correlation_id,
             category=Category(ticket.category),
             priority=Priority(ticket.priority),
+            decision_source="llm" if ticket.llm_used else "rules",
+            decision_trace=self._extract_decision_trace(logs),
             created_at=ticket.created_at,
             audit_trail=audit_trail,
         )
+
+    def _extract_decision_trace(self, logs) -> list[str]:
+        for log in logs:
+            decision_trace = log.details.get("decision_trace")
+            if isinstance(decision_trace, list):
+                return [str(step) for step in decision_trace]
+        return []

@@ -33,6 +33,8 @@ def test_classify_persists_ticket_and_exposes_audit_and_metrics(client: TestClie
     assert data["category"] == "acesso"
     assert data["priority"] == "alta"
     assert data["suggested_queue"] == "service-desk-acessos"
+    assert data["decision_source"] == "rules"
+    assert len(data["decision_trace"]) >= 4
     assert data["confidence_score"] >= 0.7
     assert any(item["event"] == "ticket_persisted" for item in data["audit_trail"])
 
@@ -42,6 +44,8 @@ def test_classify_persists_ticket_and_exposes_audit_and_metrics(client: TestClie
     audit_payload = audit_response.json()["data"]
     assert audit_payload["ticket_id"] == ticket_id
     assert audit_payload["category"] == "acesso"
+    assert audit_payload["decision_source"] == "rules"
+    assert len(audit_payload["decision_trace"]) >= 4
     assert len(audit_payload["audit_trail"]) >= 4
 
     metrics_response = client.get("/metrics")
@@ -50,4 +54,9 @@ def test_classify_persists_ticket_and_exposes_audit_and_metrics(client: TestClie
     metrics_payload = metrics_response.json()["data"]
     assert metrics_payload["total_tickets"] == 1
     assert metrics_payload["total_audit_logs"] >= 4
+    assert metrics_payload["average_processing_time_ms"] >= 1
+    assert metrics_payload["llm_fallback_count"] == 0
+    assert metrics_payload["llm_fallback_rate_percent"] == 0.0
+    assert metrics_payload["llm_attempt_rate_percent"] == 0.0
     assert metrics_payload["tickets_by_category"]["acesso"] == 1
+    assert metrics_payload["tickets_by_priority"]["alta"] == 1

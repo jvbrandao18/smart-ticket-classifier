@@ -1,6 +1,8 @@
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import logging
-from typing import Any
+from time import perf_counter
+from typing import Any, Literal
 
 from fastapi import status
 from sqlalchemy.exc import SQLAlchemyError
@@ -12,8 +14,14 @@ from app.domain.rules import RuleEngine, RuleEvaluation
 from app.infra.repositories.audit_repository import AuditRepository
 from app.infra.repositories.ticket_repository import TicketRepository
 from app.schemas.audit import AuditTrailItem
-from app.schemas.ticket import ClassificationResponse, LLMClassificationSuggestion, TicketDecision, TicketRequest
-from app.services.llm_classifier import LLMClassifier
+from app.schemas.ticket import ClassificationResponse, TicketDecision, TicketProcessingMetadata, TicketRequest
+from app.services.llm_classifier import LLMClassifier, LLMExecutionResult
+
+
+@dataclass(frozen=True)
+class ConsolidationResult:
+    decision: TicketDecision
+    decision_source: Literal["rules", "llm"]
 
 
 class ClassificationService:
@@ -39,6 +47,7 @@ class ClassificationService:
         correlation_id: str,
         session: Session,
     ) -> ClassificationResponse:
+        started_at = perf_counter()
         audit_trail: list[AuditTrailItem] = [
             self._audit_item(
                 event="input_validated",
@@ -74,18 +83,21 @@ class ClassificationService:
             },
         )
 
-        llm_suggestion: LLMClassificationSuggestion | None = None
+        llm_result: LLMExecutionResult | None = None
         if rule_evaluation.llm_required:
-            llm_suggestion = await self.llm_classifier.classify_ticket(
+            llm_result = await self.llm_classifier.classify_ticket(
                 payload=payload,
                 correlation_id=correlation_id,
             )
             audit_trail.append(
                 self._audit_item(
-                    event="llm_evaluation_completed" if llm_suggestion else "llm_evaluation_skipped",
+                    event="llm_evaluation_completed" if llm_result.suggestion else "llm_evaluation_skipped",
                     details={
                         "enabled": self.settings.llm_enabled,
-                        "received_suggestion": llm_suggestion is not None,
+                        "attempts": llm_result.attempts,
+                        "latency_ms": llm_result.latency_ms,
+                        "received_suggestion": llm_result.suggestion is not None,
+                        "fallback_reason": llm_result.fallback_reason,
                     },
                 )
             )
@@ -97,14 +109,31 @@ class ClassificationService:
                 )
             )
 
-        decision = self._consolidate(rule_evaluation=rule_evaluation, llm_suggestion=llm_suggestion)
+        consolidation = self._consolidate(rule_evaluation=rule_evaluation, llm_result=llm_result)
+        decision_trace = self._build_decision_trace(
+            rule_evaluation=rule_evaluation,
+            llm_result=llm_result,
+            consolidation=consolidation,
+        )
+        processing_time_ms = max(1, int((perf_counter() - started_at) * 1000))
+        processing_metadata = TicketProcessingMetadata(
+            decision_source=consolidation.decision_source,
+            llm_attempted=bool(llm_result and llm_result.attempts > 0),
+            llm_used=consolidation.decision_source == "llm",
+            llm_attempt_count=llm_result.attempts if llm_result else 0,
+            llm_latency_ms=llm_result.latency_ms if llm_result else 0,
+            processing_time_ms=processing_time_ms,
+            decision_trace=decision_trace,
+        )
         audit_trail.append(
             self._audit_item(
                 event="final_classification_consolidated",
                 details={
-                    "category": decision.category.value,
-                    "priority": decision.priority.value,
-                    "confidence_score": decision.confidence_score,
+                    "category": consolidation.decision.category.value,
+                    "priority": consolidation.decision.priority.value,
+                    "confidence_score": consolidation.decision.confidence_score,
+                    "decision_source": consolidation.decision_source,
+                    "decision_trace": decision_trace,
                 },
             )
         )
@@ -113,13 +142,17 @@ class ClassificationService:
             ticket = self.ticket_repository.create(
                 session,
                 payload=payload,
-                decision=decision,
+                decision=consolidation.decision,
+                metadata=processing_metadata,
                 correlation_id=correlation_id,
             )
             audit_trail.append(
                 self._audit_item(
                     event="ticket_persisted",
-                    details={"ticket_id": ticket.id},
+                    details={
+                        "ticket_id": ticket.id,
+                        "processing_time_ms": processing_time_ms,
+                    },
                 )
             )
             self.audit_repository.create_many(
@@ -147,12 +180,14 @@ class ClassificationService:
         )
         return ClassificationResponse(
             ticket_id=ticket.id,
-            category=decision.category,
-            priority=decision.priority,
-            probable_root_cause=decision.probable_root_cause,
-            suggested_queue=decision.suggested_queue,
-            confidence_score=decision.confidence_score,
-            summary_justification=decision.summary_justification,
+            category=consolidation.decision.category,
+            priority=consolidation.decision.priority,
+            probable_root_cause=consolidation.decision.probable_root_cause,
+            suggested_queue=consolidation.decision.suggested_queue,
+            confidence_score=consolidation.decision.confidence_score,
+            summary_justification=consolidation.decision.summary_justification,
+            decision_source=consolidation.decision_source,
+            decision_trace=decision_trace,
             audit_trail=audit_trail,
         )
 
@@ -160,26 +195,76 @@ class ClassificationService:
         self,
         *,
         rule_evaluation: RuleEvaluation,
-        llm_suggestion: LLMClassificationSuggestion | None,
-    ) -> TicketDecision:
-        if llm_suggestion and llm_suggestion.confidence_score >= rule_evaluation.confidence_score:
-            return TicketDecision(
-                category=llm_suggestion.category,
-                priority=llm_suggestion.priority,
-                probable_root_cause=llm_suggestion.probable_root_cause,
-                suggested_queue=llm_suggestion.suggested_queue,
-                confidence_score=llm_suggestion.confidence_score,
-                summary_justification=llm_suggestion.summary_justification,
+        llm_result: LLMExecutionResult | None,
+    ) -> ConsolidationResult:
+        if llm_result and llm_result.suggestion and llm_result.suggestion.confidence_score >= rule_evaluation.confidence_score:
+            return ConsolidationResult(
+                decision=TicketDecision(
+                    category=llm_result.suggestion.category,
+                    priority=llm_result.suggestion.priority,
+                    probable_root_cause=llm_result.suggestion.probable_root_cause,
+                    suggested_queue=llm_result.suggestion.suggested_queue,
+                    confidence_score=llm_result.suggestion.confidence_score,
+                    summary_justification=llm_result.suggestion.summary_justification,
+                ),
+                decision_source="llm",
             )
 
-        return TicketDecision(
-            category=rule_evaluation.category,
-            priority=rule_evaluation.priority,
-            probable_root_cause=rule_evaluation.probable_root_cause,
-            suggested_queue=rule_evaluation.suggested_queue,
-            confidence_score=rule_evaluation.confidence_score,
-            summary_justification=rule_evaluation.summary_justification,
+        return ConsolidationResult(
+            decision=TicketDecision(
+                category=rule_evaluation.category,
+                priority=rule_evaluation.priority,
+                probable_root_cause=rule_evaluation.probable_root_cause,
+                suggested_queue=rule_evaluation.suggested_queue,
+                confidence_score=rule_evaluation.confidence_score,
+                summary_justification=rule_evaluation.summary_justification,
+            ),
+            decision_source="rules",
         )
+
+    def _build_decision_trace(
+        self,
+        *,
+        rule_evaluation: RuleEvaluation,
+        llm_result: LLMExecutionResult | None,
+        consolidation: ConsolidationResult,
+    ) -> list[str]:
+        trace: list[str] = []
+        if rule_evaluation.matched_keywords:
+            joined_keywords = ", ".join(rule_evaluation.matched_keywords)
+            trace.append(
+                f"rule: palavras '{joined_keywords}' -> categoria {rule_evaluation.category.value}"
+            )
+        else:
+            trace.append(
+                "rule: nenhuma palavra-chave forte encontrada -> classificacao provisoria solicitacao"
+            )
+
+        trace.append(
+            f"rule: prioridade {rule_evaluation.priority.value} com confidence_score {rule_evaluation.confidence_score:.2f}"
+        )
+
+        if llm_result is None:
+            trace.append(
+                f"llm: nao acionado porque confidence_score das regras ficou em {rule_evaluation.confidence_score:.2f}"
+            )
+        elif llm_result.suggestion is None:
+            trace.append(
+                f"llm: fallback total para regras por {llm_result.fallback_reason or 'falha_desconhecida'}"
+            )
+        elif consolidation.decision_source == "llm":
+            trace.append(
+                f"llm: reforcou a decisao final para {llm_result.suggestion.category.value} com prioridade {llm_result.suggestion.priority.value}"
+            )
+        else:
+            trace.append(
+                "llm: resposta valida recebida, mas as regras permaneceram por maior ou igual confianca"
+            )
+
+        trace.append(
+            f"final: decisao {consolidation.decision_source} com confidence_score {consolidation.decision.confidence_score:.2f}"
+        )
+        return trace
 
     def _audit_item(self, *, event: str, details: dict[str, Any]) -> AuditTrailItem:
         return AuditTrailItem(

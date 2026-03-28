@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -26,6 +26,11 @@ class Ticket(Base):
     suggested_queue: Mapped[str] = mapped_column(String(120), nullable=False)
     confidence_score: Mapped[float] = mapped_column(Float, nullable=False)
     summary_justification: Mapped[str] = mapped_column(String(280), nullable=False)
+    processing_time_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    llm_attempted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    llm_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    llm_attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    llm_latency_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     correlation_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
