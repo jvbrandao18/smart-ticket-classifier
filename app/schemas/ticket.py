@@ -27,5 +27,5 @@ class LLMClassificationSuggestion(TicketDecision):
 
 
 class ClassificationResponse(TicketDecision):
-    ticket_id: str | None = None
+    ticket_id: str
     audit_trail: list[AuditTrailItem] = Field(default_factory=list)
