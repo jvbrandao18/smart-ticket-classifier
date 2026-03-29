@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from app.api.routes.audit import router as audit_router
 from app.api.routes.classify import router as classify_router
+from app.api.routes.examples import router as examples_router
 from app.api.routes.health import router as health_router
 from app.api.routes.metrics import router as metrics_router
 from app.core.config import Settings, get_settings
@@ -61,6 +62,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(audit_router)
     application.include_router(health_router)
     application.include_router(classify_router)
+    application.include_router(examples_router)
     application.include_router(metrics_router)
     return application
 

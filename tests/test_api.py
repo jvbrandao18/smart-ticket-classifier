@@ -12,6 +12,18 @@ def test_health_returns_application_status(client: TestClient) -> None:
     assert "correlation_id" in payload
 
 
+def test_examples_returns_curated_dataset_samples(client: TestClient) -> None:
+    response = client.get("/examples?limit=3")
+
+    assert response.status_code == 200
+    payload = response.json()["data"]
+    assert payload["returned_count"] == 3
+    assert payload["total_available"] >= 30
+    assert len(payload["examples"]) == 3
+    assert payload["examples"][0]["expected_category"]
+    assert payload["examples"][0]["expected_priority"]
+
+
 def test_classify_persists_ticket_and_exposes_audit_and_metrics(client: TestClient) -> None:
     response = client.post(
         "/classify",

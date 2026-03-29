@@ -11,6 +11,7 @@ O `smart-ticket-classifier` segue uma separação simples por camadas para mante
 - `app/prompts`: prompt base para o classificador LLM
 - `app/schemas`: contratos Pydantic de entrada e saída
 - `app/services`: orquestração do fluxo de negócio
+- `scripts`: avaliação offline do classificador
 
 ## Fluxo do POST /classify
 
@@ -22,6 +23,12 @@ O `smart-ticket-classifier` segue uma separação simples por camadas para mante
 6. O ticket é persistido na tabela `tickets`.
 7. A trilha de auditoria é persistida na tabela `audit_logs`.
 8. A API retorna um envelope JSON padronizado com os dados da decisão.
+
+## Fluxo do GET /examples
+
+1. A API carrega o dataset rotulado em `data/sample_tickets.json`.
+2. O endpoint retorna um subconjunto paginável para demo rápida.
+3. Cada item contém input e rótulos esperados de categoria e prioridade.
 
 ## Explainability
 
@@ -67,6 +74,17 @@ O endpoint `/metrics` consolida:
 - latência média de processamento
 - taxa de tentativa de LLM
 - taxa efetiva de fallback por LLM
+
+## Avaliação offline
+
+O script `scripts/evaluate_classifier.py` roda o classificador contra o dataset rotulado usando a própria API em memória. Ele calcula:
+
+- accuracy de categoria
+- accuracy de prioridade
+- taxa de fallback via LLM
+- confiança média
+
+O relatório gerado pode ser persistido em `docs/evaluation_report.json`.
 
 ## Decisões importantes
 

@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: smart-ticket-classifier
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: off
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        value: sqlite:////app/data/smart_ticket_classifier.db
+      - key: LOG_LEVEL
+        value: INFO
+      - key: RULE_CONFIDENCE_THRESHOLD
+        value: "0.72"
+      - key: LLM_ENABLED
+        value: "false"
+    disk:
+      name: smart-ticket-data
+      mountPath: /app/data
+      sizeGB: 1
