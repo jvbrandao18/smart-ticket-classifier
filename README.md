@@ -1,230 +1,273 @@
----
-title: Smart Ticket Classifier
-emoji: 🤖
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-app_port: 7860
-pinned: false
----
+# Smart Ticket Classifier
 
-[![CI](https://github.com/jvbrandao18/smart-ticket-classifier/actions/workflows/ci.yml/badge.svg)](https://github.com/jvbrandao18/smart-ticket-classifier/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/python-3.12-blue)
-![Tests](https://img.shields.io/badge/tests-19%20passing-brightgreen)
+> Projeto de portfólio focado em triagem inteligente de tickets para operações de suporte, service desk e automação corporativa.
 
-# smart-ticket-classifier
+API de triagem inteligente para chamados técnicos, projetada para classificar tickets, sugerir causa raiz, priorizar atendimento e registrar auditoria técnica.
 
-API em FastAPI para triagem inteligente de chamados técnicos. O projeto combina regras determinísticas com fallback opcional via LLM, persistência em SQLite, auditoria, explainability e avaliação offline sobre dataset rotulado.
+## Objetivo
+
+Reduzir triagem manual em operações de suporte e service desk, combinando:
+
+- regras determinísticas
+- fallback opcional com LLM
+- explainability
+- persistência de resultados
+- avaliação offline
+
+## Problema que resolve
+
+Times de suporte recebem chamados com:
+
+- descrição incompleta
+- classificação inconsistente
+- baixa padronização
+- priorização subjetiva
+
+Este projeto transforma texto livre em uma saída estruturada e auditável para acelerar atendimento e melhorar qualidade operacional.
 
 ## O que a API retorna
 
-- categoria
-- prioridade
-- causa raiz provável
-- fila sugerida
-- confidence score
-- justificativa resumida
-- trilha de auditoria
-- decision trace explicável
+Para cada ticket, a API pode retornar:
 
-## Stack
+- **categoria**
+- **prioridade**
+- **causa raiz provável**
+- **justificativa da classificação**
+- **score/confiança**
+- **trilha de auditoria**
+- **decision trace**
 
-- Python 3.12
-- FastAPI
-- Pydantic
-- SQLite
-- SQLAlchemy
-- pytest
-- Docker
-
-## Endpoints
-
-- `GET /health`
-- `POST /classify`
-- `GET /audit/{id}`
-- `GET /metrics`
-- `GET /examples`
-- `GET /docs`
-
-## Fluxo
-
-```text
-Request -> validation -> RuleEngine -> optional LLM fallback -> consolidation
-        -> persistence (tickets + audit_logs) -> standardized JSON response
-```
-
-## Por que regras + LLM
-
-- Regras são rápidas, baratas e auditáveis para sinais claros como `senha`, `timeout` e `integracao`.
-- LLM só entra quando a confiança cai ou o texto fica ambíguo.
-- Isso reduz custo e mantém previsibilidade sem abrir mão de cobertura em casos difíceis.
-
-## Confidence score
-
-O `confidence_score` desta V1 é heurístico. Ele sobe com o número de palavras-chave relevantes encontradas e cai quando há competição entre categorias ou sinais fracos. Não é uma probabilidade calibrada; é uma métrica operacional para triagem inicial.
-
-## Explainability mode
-
-Toda classificação retorna `decision_trace`, por exemplo:
+## Exemplo de entrada
 
 ```json
-[
-  "rule: palavras 'acesso, senha, permissao' -> categoria acesso",
-  "rule: prioridade alta com confidence_score 0.89",
-  "llm: nao acionado porque confidence_score das regras ficou em 0.89",
-  "final: decisao rules com confidence_score 0.89"
-]
+{
+  "title": "Erro ao gerar certificado",
+  "description": "Aluno concluiu o curso, mas o certificado nao foi emitido no portal apos 48 horas.",
+  "requester": "suporte.academico",
+  "source_system": "portal-do-aluno"
+}
 ```
 
-## Avaliação offline
+## Exemplo de saída
 
-O repositório inclui [scripts/evaluate_classifier.py](scripts/evaluate_classifier.py), que roda o classificador contra o dataset rotulado em [data/sample_tickets.json](data/sample_tickets.json).
+```json
+{
+  "category": "incidente",
+  "priority": "alta",
+  "probable_root_cause": "Falha operacional ou indisponibilidade do servico.",
+  "confidence_score": 0.82,
+  "summary_justification": "Categoria incidente sugerida pelas palavras-chave: erro.",
+  "decision_trace": [
+    "rule: palavras 'erro' -> categoria incidente",
+    "rule: prioridade alta com confidence_score 0.82"
+  ],
+  "audit_trail": [
+    {
+      "event": "input_validated"
+    }
+  ]
+}
+```
+
+---
+
+## Arquitetura
+
+```text
+Cliente / Frontend / Postman
+            |
+            v
+         FastAPI
+            |
+   +--------+--------+
+   |        |        |
+   v        v        v
+ Rules   Classifier  Audit
+ Engine  / LLM       Logger
+   |        |          |
+   +--------+-----+----+
+                  v
+               SQLite
+```
+
+## Stack utilizada
+
+- **Python 3.12**
+- **FastAPI**
+- **Pydantic**
+- **SQLite**
+- **SQLAlchemy**
+- **Pytest**
+- **Docker**
+- **Hugging Face Spaces (deploy)**
+- **LLM fallback opcional**
+
+## Principais capacidades
+
+- classificação automática de chamados
+- priorização por impacto e urgência
+- sugestão de causa raiz
+- explicabilidade da decisão
+- persistência para histórico e análise
+- endpoint de healthcheck
+- endpoint de exemplos para demo
+- testes automatizados
+- deploy containerizado
+
+## Casos de uso reais
+
+Este projeto é aderente a cenários como:
+
+- service desk corporativo
+- sustentação de automações
+- triagem de incidentes operacionais
+- backlog técnico
+- automação de atendimento interno
+- operações com alto volume de chamados
+
+## Diferenciais técnicos
+
+### 1) Regras + IA
+
+Evita depender 100% de LLM. Mantém previsibilidade e custo controlado.
+
+### 2) Auditabilidade
+
+Cada classificação pode ser rastreada, revisada e explicada.
+
+### 3) Estrutura pronta para operação
+
+Projeto organizado para API real, testes, avaliação, auditoria e deploy.
+
+### 4) Expansível
+
+Pode evoluir para:
+
+- integração com Jira / ServiceNow / Zendesk
+- classificação multi-rótulo
+- RAG com base de incidentes
+- recomendação automática de resolução
+- dashboard operacional
+
+---
+
+## Como executar localmente
+
+### 1. Clonar o projeto
 
 ```bash
-python scripts/evaluate_classifier.py --output docs/evaluation_report.json
+git clone https://github.com/jvbrandao18/smart-ticket-classifier.git
+cd smart-ticket-classifier
 ```
 
-Baseline atual com a configuração padrão do projeto:
+### 2. Criar ambiente virtual
 
-- total de exemplos: `30`
-- accuracy de categoria: `0.8333`
-- accuracy de prioridade: `0.8667`
-- taxa de fallback via LLM: `0.0`
-- confidence score médio: `0.749`
+```bash
+python -m venv .venv
+```
 
-O relatório completo da última execução está em [docs/evaluation_report.json](docs/evaluation_report.json).
+### 3. Ativar ambiente
 
-## Execução local
+**Windows**
 
-1. Crie um ambiente virtual com Python 3.12.
-2. Instale as dependências.
+```bash
+.venv\Scripts\activate
+```
+
+**Linux/macOS**
+
+```bash
+source .venv/bin/activate
+```
+
+### 4. Instalar dependências
 
 ```bash
 pip install -e .[dev]
 ```
 
-3. Crie o arquivo `.env`.
-
-```bash
-cp .env.example .env
-```
-
-No PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-4. Suba a API localmente.
+### 5. Rodar a API
 
 ```bash
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-5. Rode os testes.
+Acesse:
+
+- API: `http://127.0.0.1:8000`
+- Docs Swagger: `http://127.0.0.1:8000/docs`
+
+---
+
+## Rodando com Docker
 
 ```bash
-python -m pytest
+docker build -t smart-ticket-classifier .
+docker run -p 8000:7860 smart-ticket-classifier
 ```
 
-## Execução com Docker local
+---
+
+## Testes
 
 ```bash
-cp .env.example .env
-docker compose up --build
+python -m pytest -v
 ```
 
-A API continua acessível localmente em `http://localhost:8000`.
-
-## Deploy no Hugging Face Spaces
-
-Este repositório está pronto para Space do tipo Docker.
-
-### Como criar o Space
-
-1. Crie um novo Space no Hugging Face.
-2. Escolha o tipo `Docker`.
-3. Faça push deste repositório para o Space.
-4. Aguarde o build do `Dockerfile`.
-
-### Variáveis e secrets
-
-Configure nas Settings do Space, sem commitá-las:
-
-- `LLM_ENABLED`
-- `LLM_API_KEY` ou `OPENAI_API_KEY`
-- `LLM_BASE_URL`
-- `LLM_MODEL`
-- `RULE_CONFIDENCE_THRESHOLD`
-
-Se nenhuma chave de API existir, a aplicação continua subindo normalmente e opera em modo determinístico com fallback explícito.
-
-### Endpoints para validar após o deploy
-
-- `/health`
-- `/docs`
-- `/examples`
-- `/metrics`
-
-### Observação sobre SQLite
-
-No Hugging Face Spaces Docker, o banco SQLite roda em armazenamento efêmero de demo. Após rebuild ou restart, os dados podem ser perdidos. Isso é aceitável para portfólio e demonstração pública, mas não é persistência forte de produção.
-
-## Docker e runtime do Space
-
-- a aplicação escuta em `0.0.0.0`
-- a porta padrão do container é `7860`
-- o `Dockerfile` usa fallback explícito para `PORT=7860`
-- o banco no container usa `DATABASE_URL` em `/tmp` por padrão
-
-## Variáveis principais
-
-- `PORT`
-- `DATABASE_URL`
-- `RULE_CONFIDENCE_THRESHOLD`
-- `LLM_ENABLED`
-- `LLM_API_KEY`
-- `OPENAI_API_KEY`
-- `LLM_BASE_URL`
-- `LLM_MODEL`
-- `LLM_TIMEOUT_SECONDS`
-- `LLM_MAX_RETRIES`
-
-## Qualidade
-
-- 19 testes automatizados cobrindo API, edge cases, prioridade conflitante, input inválido, `/examples` e fallback do LLM
-- CI em Python 3.12 via GitHub Actions
-- auditoria persistida em `audit_logs`
-- logs estruturados com `correlation_id`
-
-## Trade-offs
-
-- SQLite simplifica a operação, mas não é o banco ideal para alta concorrência.
-- O score de confiança é heurístico, não probabilístico calibrado.
-- O LLM é opcional e desligado por padrão para manter execução local simples.
-- As métricas atuais são aplicacionais, não Prometheus nativo.
-
-## Limitações
-
-- Sem autenticação/autorização nos endpoints.
-- Sem migrations formais de banco.
-- Dataset sintético, apesar de mais realista.
-- Sem observabilidade externa de produção.
-
-## Estrutura
+## Estrutura do projeto
 
 ```text
-app/
-  api/routes/
-  core/
-  domain/
-  infra/repositories/
-  prompts/
-  schemas/
-  services/
-data/
-docs/
-scripts/
-tests/
-.github/workflows/
+smart-ticket-classifier/
+├── app/
+│   ├── api/
+│   ├── core/
+│   ├── domain/
+│   ├── infra/
+│   ├── prompts/
+│   ├── schemas/
+│   ├── services/
+│   └── main.py
+├── tests/
+├── data/
+├── docs/
+├── scripts/
+├── Dockerfile
+├── docker-compose.yml
+├── pyproject.toml
+└── README.md
 ```
+
+## Próximos passos
+
+Roadmap sugerido:
+
+- [ ] autenticação por API key
+- [ ] endpoint batch para múltiplos tickets
+- [ ] dashboard com métricas de classificação
+- [ ] integração com fila/mensageria
+- [ ] feedback loop para reclassificação
+- [ ] benchmark entre regras e LLM
+
+## Deploy
+
+Demo pública:
+
+[Hugging Face Space](https://huggingface.co/spaces/jvitbrandao/smart-ticket-classifier)
+
+## Valor de negócio
+
+Este projeto demonstra capacidade prática em:
+
+- engenharia de software aplicada a IA
+- automação corporativa
+- design de APIs
+- classificação de texto
+- explainable AI
+- arquitetura pronta para operação
+
+## Autor
+
+**João Vitor**
+Analista de TI | Python | Automação | IA aplicada a operações
+
+GitHub: `https://github.com/jvbrandao18`
