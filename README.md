@@ -1,7 +1,16 @@
+---
+title: Smart Ticket Classifier
+emoji: 🤖
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 [![CI](https://github.com/jvbrandao18/smart-ticket-classifier/actions/workflows/ci.yml/badge.svg)](https://github.com/jvbrandao18/smart-ticket-classifier/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![Tests](https://img.shields.io/badge/tests-19%20passing-brightgreen)
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/jvbrandao18/smart-ticket-classifier)
 
 # smart-ticket-classifier
 
@@ -28,6 +37,15 @@ API em FastAPI para triagem inteligente de chamados técnicos. O projeto combina
 - pytest
 - Docker
 
+## Endpoints
+
+- `GET /health`
+- `POST /classify`
+- `GET /audit/{id}`
+- `GET /metrics`
+- `GET /examples`
+- `GET /docs`
+
 ## Fluxo
 
 ```text
@@ -45,137 +63,6 @@ Request -> validation -> RuleEngine -> optional LLM fallback -> consolidation
 
 O `confidence_score` desta V1 é heurístico. Ele sobe com o número de palavras-chave relevantes encontradas e cai quando há competição entre categorias ou sinais fracos. Não é uma probabilidade calibrada; é uma métrica operacional para triagem inicial.
 
-## Endpoints
-
-- `GET /health`
-- `POST /classify`
-- `GET /audit/{id}`
-- `GET /metrics`
-- `GET /examples`
-
-## Demo rápida
-
-### Caso 1: acesso
-
-Input:
-
-```json
-{
-  "title": "Usuario sem acesso apos reset de senha",
-  "description": "O usuario segue sem acesso ao portal e recebe erro de permissao ao autenticar.",
-  "requester": "time.suporte",
-  "source_system": "portal-interno"
-}
-```
-
-Output resumido:
-
-```json
-{
-  "category": "acesso",
-  "priority": "alta",
-  "suggested_queue": "service-desk-acessos",
-  "decision_source": "rules"
-}
-```
-
-### Caso 2: integracao
-
-Input:
-
-```json
-{
-  "title": "Integracao CRM x ERP nao sincroniza",
-  "description": "A integracao via API nao envia pedidos desde ontem a noite.",
-  "requester": "operacoes",
-  "source_system": "crm"
-}
-```
-
-Output resumido:
-
-```json
-{
-  "category": "integracao",
-  "priority": "alta",
-  "suggested_queue": "squad-integracoes",
-  "decision_source": "rules"
-}
-```
-
-### Caso 3: automacao
-
-Input:
-
-```json
-{
-  "title": "Robo de faturamento nao processou",
-  "description": "A automacao do faturamento nao executou o job agendado durante a madrugada.",
-  "requester": "backoffice",
-  "source_system": "orquestrador"
-}
-```
-
-Output resumido:
-
-```json
-{
-  "category": "automacao",
-  "priority": "media",
-  "suggested_queue": "squad-automacoes",
-  "decision_source": "rules"
-}
-```
-
-### Caso 4: fallback controlado
-
-Input:
-
-```json
-{
-  "title": "Solicitacao de novo perfil",
-  "description": "Time de compras precisa de um novo perfil de consulta para homologacao.",
-  "requester": "compras",
-  "source_system": "iam"
-}
-```
-
-Output resumido:
-
-```json
-{
-  "category": "solicitacao",
-  "priority": "baixa",
-  "decision_source": "rules",
-  "decision_trace": [
-    "rule: nenhuma palavra-chave forte encontrada -> classificacao provisoria solicitacao",
-    "llm: fallback total para regras por llm_disabled"
-  ]
-}
-```
-
-### Caso 5: conflito de prioridade
-
-Input:
-
-```json
-{
-  "title": "Login critico",
-  "description": "Sistema parado para todos os usuarios, sem acesso ao portal e com senha rejeitada.",
-  "requester": "time.ops"
-}
-```
-
-Output resumido:
-
-```json
-{
-  "category": "acesso",
-  "priority": "critica",
-  "decision_source": "rules"
-}
-```
-
 ## Explainability mode
 
 Toda classificação retorna `decision_trace`, por exemplo:
@@ -188,19 +75,6 @@ Toda classificação retorna `decision_trace`, por exemplo:
   "final: decisao rules com confidence_score 0.89"
 ]
 ```
-
-## Métricas
-
-`GET /metrics` expõe:
-
-- total de tickets
-- total de eventos de auditoria
-- média de `confidence_score`
-- latência média de processamento
-- taxa de fallback via LLM
-- taxa de tentativa de uso de LLM
-- distribuição por categoria
-- distribuição por prioridade
 
 ## Avaliação offline
 
@@ -219,24 +93,6 @@ Baseline atual com a configuração padrão do projeto:
 - confidence score médio: `0.749`
 
 O relatório completo da última execução está em [docs/evaluation_report.json](docs/evaluation_report.json).
-
-## Estrutura
-
-```text
-app/
-  api/routes/
-  core/
-  domain/
-  infra/repositories/
-  prompts/
-  schemas/
-  services/
-data/
-docs/
-scripts/
-tests/
-.github/workflows/
-```
 
 ## Execução local
 
@@ -259,7 +115,7 @@ No PowerShell:
 Copy-Item .env.example .env
 ```
 
-4. Suba a API.
+4. Suba a API localmente.
 
 ```bash
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -271,30 +127,68 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 python -m pytest
 ```
 
-## Deploy
-
-O repositório está preparado para deploy com Docker no Render via [render.yaml](render.yaml). O botão no topo do README cria o serviço a partir do GitHub com:
-
-- health check em `/health`
-- uso de `PORT` dinâmico
-- disco persistente para o SQLite
-- configuração mínima de ambiente
-
-Observação: eu preparei a infraestrutura de deploy, mas o URL público final depende da criação do serviço na sua conta Render.
-
-## Execução com Docker
+## Execução com Docker local
 
 ```bash
 cp .env.example .env
 docker compose up --build
 ```
 
-## Hardening do LLM
+A API continua acessível localmente em `http://localhost:8000`.
 
-- validação estrita do schema via Pydantic
-- extra keys proibidas
-- retry controlado
-- fallback total para regras em caso de timeout, erro HTTP ou payload inválido
+## Deploy no Hugging Face Spaces
+
+Este repositório está pronto para Space do tipo Docker.
+
+### Como criar o Space
+
+1. Crie um novo Space no Hugging Face.
+2. Escolha o tipo `Docker`.
+3. Faça push deste repositório para o Space.
+4. Aguarde o build do `Dockerfile`.
+
+### Variáveis e secrets
+
+Configure nas Settings do Space, sem commitá-las:
+
+- `LLM_ENABLED`
+- `LLM_API_KEY` ou `OPENAI_API_KEY`
+- `LLM_BASE_URL`
+- `LLM_MODEL`
+- `RULE_CONFIDENCE_THRESHOLD`
+
+Se nenhuma chave de API existir, a aplicação continua subindo normalmente e opera em modo determinístico com fallback explícito.
+
+### Endpoints para validar após o deploy
+
+- `/health`
+- `/docs`
+- `/examples`
+- `/metrics`
+
+### Observação sobre SQLite
+
+No Hugging Face Spaces Docker, o banco SQLite roda em armazenamento efêmero de demo. Após rebuild ou restart, os dados podem ser perdidos. Isso é aceitável para portfólio e demonstração pública, mas não é persistência forte de produção.
+
+## Docker e runtime do Space
+
+- a aplicação escuta em `0.0.0.0`
+- a porta padrão do container é `7860`
+- o `Dockerfile` usa fallback explícito para `PORT=7860`
+- o banco no container usa `DATABASE_URL` em `/tmp` por padrão
+
+## Variáveis principais
+
+- `PORT`
+- `DATABASE_URL`
+- `RULE_CONFIDENCE_THRESHOLD`
+- `LLM_ENABLED`
+- `LLM_API_KEY`
+- `OPENAI_API_KEY`
+- `LLM_BASE_URL`
+- `LLM_MODEL`
+- `LLM_TIMEOUT_SECONDS`
+- `LLM_MAX_RETRIES`
 
 ## Qualidade
 
@@ -317,10 +211,20 @@ docker compose up --build
 - Dataset sintético, apesar de mais realista.
 - Sem observabilidade externa de produção.
 
-## Próximos passos
+## Estrutura
 
-- criar um deploy público real a partir do `render.yaml`
-- ligar o fluxo a um provedor LLM real
-- adicionar benchmark supervisionado com mais classes e mais ruído
-- publicar dashboard de métricas
-- adicionar autenticação e rate limiting
+```text
+app/
+  api/routes/
+  core/
+  domain/
+  infra/repositories/
+  prompts/
+  schemas/
+  services/
+data/
+docs/
+scripts/
+tests/
+.github/workflows/
+```
