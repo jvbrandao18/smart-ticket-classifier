@@ -41,6 +41,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url="/redoc",
         lifespan=lifespan,
     )
+
+    @application.get("/")
+    async def root() -> dict[str, object]:
+        return {
+            "name": "Smart Ticket Classifier",
+            "status": "running",
+            "docs": "/docs",
+            "health": "/health",
+            "examples": "/examples",
+            "metrics": "/metrics",
+        }
+
+    @application.get("/status")
+    async def status() -> dict[str, object]:
+        return {
+            "name": "Smart Ticket Classifier",
+            "status": "running",
+            "version": app_settings.app_version,
+            "environment": app_settings.environment,
+            "docs": "/docs",
+            "health": "/health",
+            "metrics": "/metrics",
+        }
+
     application.state.settings = app_settings
     application.state.classification_service = ClassificationService(
         settings=app_settings,
