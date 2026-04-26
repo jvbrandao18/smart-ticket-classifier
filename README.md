@@ -4,6 +4,23 @@
 
 API de triagem inteligente para chamados técnicos, projetada para classificar tickets, sugerir causa raiz, priorizar atendimento e registrar auditoria técnica.
 
+## Live Demo
+
+Hugging Face Space:
+https://huggingface.co/spaces/jvitbrandao/smart-ticket-classifier
+
+API:
+https://jvitbrandao-smart-ticket-classifier.hf.space
+
+Endpoints:
+
+- `/`
+- `/status`
+- `/health`
+- `/docs`
+- `/examples`
+- `/metrics`
+
 ## Objetivo
 
 Reduzir triagem manual em operações de suporte e service desk, combinando:
