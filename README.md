@@ -1,290 +1,190 @@
+---
+title: Smart Ticket Classifier
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Smart Ticket Classifier
 
-> Projeto de portfólio focado em triagem inteligente de tickets para operações de suporte, service desk e automação corporativa.
+Smart Ticket Classifier is a FastAPI backend that receives technical support tickets, classifies them, suggests priority and probable root cause, and records an audit trail for the decision.
 
-API de triagem inteligente para chamados técnicos, projetada para classificar tickets, sugerir causa raiz, priorizar atendimento e registrar auditoria técnica.
+## What is it?
 
-## Live Demo
+It is an API-first ticket triage service for support, service desk, and automation operations scenarios.
 
-Hugging Face Space:
-https://huggingface.co/spaces/jvitbrandao/smart-ticket-classifier
+The API can:
 
-API:
-https://jvitbrandao-smart-ticket-classifier.hf.space
+- classify a support ticket from `title`, `description`, `requester`, and optional `source_system`
+- return category, priority, probable root cause, suggested queue, confidence, and justification
+- record audit information for each classification
+- return example tickets for demos
+- expose basic metrics and health endpoints
 
-Endpoints:
+The classifier uses deterministic rules by default. An optional LLM fallback can be used when configured, but the service can run without an OpenAI API key.
 
-- `/`
-- `/status`
-- `/health`
-- `/docs`
-- `/examples`
-- `/metrics`
+## Why was it built?
 
-## Objetivo
+Support tickets often arrive with incomplete descriptions, inconsistent classification, and subjective priority decisions. A structured first-pass triage can make the next support step clearer without hiding how the decision was made.
 
-Reduzir triagem manual em operações de suporte e service desk, combinando:
+This project was built to demonstrate a practical AI-adjacent backend: deterministic rules first, optional LLM fallback, explicit decision traces, persistence, auditability, API validation, tests, Docker support, and a deployable container setup.
 
-- regras determinísticas
-- fallback opcional com LLM
-- explainability
-- persistência de resultados
-- avaliação offline
+## How does it work?
 
-## Problema que resolve
+A client sends a ticket payload to `/classify`.
 
-Times de suporte recebem chamados com:
+The classification service validates the input, applies local rules, optionally attempts LLM classification when configured, persists the ticket and audit data in SQLite, and returns a structured response.
 
-- descrição incompleta
-- classificação inconsistente
-- baixa padronização
-- priorização subjetiva
+The response includes:
 
-Este projeto transforma texto livre em uma saída estruturada e auditável para acelerar atendimento e melhorar qualidade operacional.
+- `ticket_id`
+- `category`
+- `priority`
+- `probable_root_cause`
+- `suggested_queue`
+- `confidence_score`
+- `summary_justification`
+- `decision_source`
+- `decision_trace`
+- `audit_trail`
 
-## O que a API retorna
+### Main technologies
 
-Para cada ticket, a API pode retornar:
+- Python 3.12
+- FastAPI
+- Pydantic
+- Pydantic Settings
+- SQLAlchemy
+- SQLite
+- Pytest
+- Docker
+- Optional OpenAI-compatible LLM fallback
 
-- **categoria**
-- **prioridade**
-- **causa raiz provável**
-- **justificativa da classificação**
-- **score/confiança**
-- **trilha de auditoria**
-- **decision trace**
+### API endpoints
 
-## Exemplo de entrada
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/` | Basic service information |
+| `GET` | `/status` | Service status and version |
+| `GET` | `/health` | Health check |
+| `GET` | `/examples` | Return sample tickets |
+| `GET` | `/metrics` | Return classification metrics |
+| `POST` | `/classify` | Classify a ticket |
+| `GET` | `/audit/{ticket_id}` | Return audit data for one ticket |
+| `GET` | `/docs` | Swagger API documentation |
 
-```json
-{
-  "title": "Erro ao gerar certificado",
-  "description": "Aluno concluiu o curso, mas o certificado nao foi emitido no portal apos 48 horas.",
-  "requester": "suporte.academico",
-  "source_system": "portal-do-aluno"
-}
-```
-
-## Exemplo de saída
-
-```json
-{
-  "category": "incidente",
-  "priority": "alta",
-  "probable_root_cause": "Falha operacional ou indisponibilidade do servico.",
-  "confidence_score": 0.82,
-  "summary_justification": "Categoria incidente sugerida pelas palavras-chave: erro.",
-  "decision_trace": [
-    "rule: palavras 'erro' -> categoria incidente",
-    "rule: prioridade alta com confidence_score 0.82"
-  ],
-  "audit_trail": [
-    {
-      "event": "input_validated"
-    }
-  ]
-}
-```
-
----
-
-## Arquitetura
-
-```text
-Cliente / Frontend / Postman
-            |
-            v
-         FastAPI
-            |
-   +--------+--------+
-   |        |        |
-   v        v        v
- Rules   Classifier  Audit
- Engine  / LLM       Logger
-   |        |          |
-   +--------+-----+----+
-                  v
-               SQLite
-```
-
-## Stack utilizada
-
-- **Python 3.12**
-- **FastAPI**
-- **Pydantic**
-- **SQLite**
-- **SQLAlchemy**
-- **Pytest**
-- **Docker**
-- **Hugging Face Spaces (deploy)**
-- **LLM fallback opcional**
-
-## Principais capacidades
-
-- classificação automática de chamados
-- priorização por impacto e urgência
-- sugestão de causa raiz
-- explicabilidade da decisão
-- persistência para histórico e análise
-- endpoint de healthcheck
-- endpoint de exemplos para demo
-- testes automatizados
-- deploy containerizado
-
-## Casos de uso reais
-
-Este projeto é aderente a cenários como:
-
-- service desk corporativo
-- sustentação de automações
-- triagem de incidentes operacionais
-- backlog técnico
-- automação de atendimento interno
-- operações com alto volume de chamados
-
-## Diferenciais técnicos
-
-### 1) Regras + IA
-
-Evita depender 100% de LLM. Mantém previsibilidade e custo controlado.
-
-### 2) Auditabilidade
-
-Cada classificação pode ser rastreada, revisada e explicada.
-
-### 3) Estrutura pronta para operação
-
-Projeto organizado para API real, testes, avaliação, auditoria e deploy.
-
-### 4) Expansível
-
-Pode evoluir para:
-
-- integração com Jira / ServiceNow / Zendesk
-- classificação multi-rótulo
-- RAG com base de incidentes
-- recomendação automática de resolução
-- dashboard operacional
-
----
-
-## Como executar localmente
-
-### 1. Clonar o projeto
+### Example usage
 
 ```bash
-git clone https://github.com/jvbrandao18/smart-ticket-classifier.git
-cd smart-ticket-classifier
+curl -X POST http://localhost:8000/classify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Certificate generation error",
+    "description": "The student completed the course, but the certificate was not issued in the portal after 48 hours.",
+    "requester": "academic_support",
+    "source_system": "student_portal"
+  }'
 ```
 
-### 2. Criar ambiente virtual
+Example response shape:
+
+```json
+{
+  "data": {
+    "ticket_id": "ticket-id",
+    "category": "incident",
+    "priority": "alta",
+    "probable_root_cause": "Falha operacional ou indisponibilidade do servico.",
+    "suggested_queue": "noc-aplicacoes",
+    "confidence_score": 0.82,
+    "summary_justification": "Incident category suggested by matched keywords.",
+    "decision_source": "rules",
+    "decision_trace": [
+      "rule: matched error-related keywords"
+    ],
+    "audit_trail": []
+  }
+}
+```
+
+If the Hugging Face Space is running, the public demo is available at:
+
+- Space: `https://huggingface.co/spaces/jvitbrandao/smart-ticket-classifier`
+- API: `https://jvitbrandao-smart-ticket-classifier.hf.space`
+- Swagger: `https://jvitbrandao-smart-ticket-classifier.hf.space/docs`
+
+### Project structure
+
+```text
+app/
+  main.py                 FastAPI application factory
+  api/routes/             HTTP endpoints
+  core/                   Configuration, database, errors, logging, middleware
+  domain/                 Rules, enums, and domain models
+  infra/repositories/     SQLite repositories
+  prompts/                LLM prompt template
+  schemas/                Pydantic request and response schemas
+  services/               Classification, audit, metrics, and LLM fallback logic
+data/
+docs/
+scripts/
+tests/
+Dockerfile
+docker-compose.yml
+pyproject.toml
+requirements.txt
+```
+
+## How do I run it?
+
+### Run locally
 
 ```bash
 python -m venv .venv
-```
-
-### 3. Ativar ambiente
-
-**Windows**
-
-```bash
-.venv\Scripts\activate
-```
-
-**Linux/macOS**
-
-```bash
 source .venv/bin/activate
-```
-
-### 4. Instalar dependências
-
-```bash
-pip install -e .[dev]
-```
-
-### 5. Rodar a API
-
-```bash
+pip install -r requirements.txt
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Acesse:
+On Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Open:
 
 - API: `http://127.0.0.1:8000`
-- Docs Swagger: `http://127.0.0.1:8000/docs`
+- Swagger docs: `http://127.0.0.1:8000/docs`
 
----
-
-## Rodando com Docker
+### Run with Docker
 
 ```bash
 docker build -t smart-ticket-classifier .
 docker run -p 8000:7860 smart-ticket-classifier
 ```
 
----
+With Docker Compose:
 
-## Testes
+```bash
+docker compose up --build
+```
+
+### Optional LLM configuration
+
+The service runs with deterministic rules when no LLM key is configured. To enable the optional LLM fallback, create a `.env` file from `.env.example`, set `LLM_ENABLED=true`, and configure `LLM_API_KEY` or `OPENAI_API_KEY` before starting the app.
+
+### Tests and validation
 
 ```bash
 python -m pytest -v
 ```
 
-## Estrutura do projeto
+Additional project evaluation script:
 
-```text
-smart-ticket-classifier/
-├── app/
-│   ├── api/
-│   ├── core/
-│   ├── domain/
-│   ├── infra/
-│   ├── prompts/
-│   ├── schemas/
-│   ├── services/
-│   └── main.py
-├── tests/
-├── data/
-├── docs/
-├── scripts/
-├── Dockerfile
-├── docker-compose.yml
-├── pyproject.toml
-└── README.md
+```bash
+python scripts/evaluate_classifier.py
 ```
-
-## Próximos passos
-
-Roadmap sugerido:
-
-- [ ] autenticação por API key
-- [ ] endpoint batch para múltiplos tickets
-- [ ] dashboard com métricas de classificação
-- [ ] integração com fila/mensageria
-- [ ] feedback loop para reclassificação
-- [ ] benchmark entre regras e LLM
-
-## Deploy
-
-Demo pública:
-
-[Hugging Face Space](https://huggingface.co/spaces/jvitbrandao/smart-ticket-classifier)
-
-## Valor de negócio
-
-Este projeto demonstra capacidade prática em:
-
-- engenharia de software aplicada a IA
-- automação corporativa
-- design de APIs
-- classificação de texto
-- explainable AI
-- arquitetura pronta para operação
-
-## Autor
-
-**João Vitor**
-Analista de TI | Python | Automação | IA aplicada a operações
-
-GitHub: `https://github.com/jvbrandao18`
